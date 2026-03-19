@@ -391,6 +391,13 @@ if (copyEmailBtn) {
     });
 }
 
+const API_ENDPOINTS = [
+    "https://formsubmit.co/ajax/hamanshu055@gmail.com",
+    "https://formsubmit.co/ajax/kumarhamanshu40@gmail.com"
+];
+let contactRetrying = false;
+let hireRetrying = false;
+
 if (contactForm) {
     const validateContactEmail = () => {
         if (!contactEmailInput) return true;
@@ -444,21 +451,51 @@ if (contactForm) {
 
         try {
             const formData = new FormData(contactForm);
-            const response = await fetch("https://formsubmit.co/ajax/kumarhamanshu40@gmail.com", {
-                method: "POST",
-                headers: { Accept: "application/json" },
-                body: formData
-            });
+            if (contactEmailInput?.value) {
+                formData.set("_replyto", contactEmailInput.value);
+            }
+            formData.set("formType", "contact");
+            let delivered = false;
+            let usedEndpoint = API_ENDPOINTS[0];
 
-            if (response.ok) {
+            for (const endpoint of API_ENDPOINTS) {
+                usedEndpoint = endpoint;
+                const response = await fetch(endpoint, {
+                    method: "POST",
+                    headers: { Accept: "application/json" },
+                    body: formData
+                });
+                if (response.ok) {
+                    delivered = true;
+                    break;
+                }
+                // if rate limited, try next
+                if (![429, 403].includes(response.status)) break;
+            }
+
+            if (delivered) {
                 window.location.href = new URL("thanks.html", window.location.href).toString();
                 return;
             }
 
-            if (hint) {
-                hint.textContent = "Send failed. If this is first use, verify FormSubmit email once and try again.";
+            if (!contactRetrying) {
+                contactRetrying = true;
+                if (hint) hint.textContent = "Send failed via AJAX. Retrying with standard submit...";
+                contactForm.action = usedEndpoint.replace("/ajax/", "/");
+                contactForm.method = "POST";
+                contactForm.submit();
+                return;
             }
+            if (hint) hint.textContent = "Send failed. If this is first use, verify FormSubmit email once and try again.";
         } catch (error) {
+            if (!contactRetrying) {
+                contactRetrying = true;
+                if (hint) hint.textContent = "Network error. Retrying with standard submit...";
+                contactForm.action = API_ENDPOINTS[0].replace("/ajax/", "/");
+                contactForm.method = "POST";
+                contactForm.submit();
+                return;
+            }
             if (hint) hint.textContent = "Network error. Please try again.";
         }
     });
@@ -674,13 +711,28 @@ if (hireForm) {
 
         try {
             const formData = new FormData(hireForm);
-            const response = await fetch("https://formsubmit.co/ajax/kumarhamanshu40@gmail.com", {
-                method: "POST",
-                headers: { Accept: "application/json" },
-                body: formData
-            });
+            if (hireEmail?.value) {
+                formData.set("_replyto", hireEmail.value);
+            }
+            formData.set("formType", "hire");
+            let delivered = false;
+            let usedEndpoint = API_ENDPOINTS[0];
 
-            if (response.ok) {
+            for (const endpoint of API_ENDPOINTS) {
+                usedEndpoint = endpoint;
+                const response = await fetch(endpoint, {
+                    method: "POST",
+                    headers: { Accept: "application/json" },
+                    body: formData
+                });
+                if (response.ok) {
+                    delivered = true;
+                    break;
+                }
+                if (![429, 403].includes(response.status)) break;
+            }
+
+            if (delivered) {
                 if (hireToast) hireToast.classList.add("show");
                 if (hireFormHint) hireFormHint.textContent = "Request sent successfully.";
                 setTimeout(() => {
@@ -689,10 +741,26 @@ if (hireForm) {
                 return;
             }
 
+            if (!hireRetrying) {
+                hireRetrying = true;
+                if (hireFormHint) hireFormHint.textContent = "Send failed via AJAX. Retrying with standard submit...";
+                hireForm.action = usedEndpoint.replace("/ajax/", "/");
+                hireForm.method = "POST";
+                hireForm.submit();
+                return;
+            }
             if (hireFormHint) {
                 hireFormHint.textContent = "Send failed. If this is first use, verify FormSubmit email once and try again.";
             }
         } catch (error) {
+            if (!hireRetrying) {
+                hireRetrying = true;
+                if (hireFormHint) hireFormHint.textContent = "Network error. Retrying with standard submit...";
+                hireForm.action = API_ENDPOINTS[0].replace("/ajax/", "/");
+                hireForm.method = "POST";
+                hireForm.submit();
+                return;
+            }
             if (hireFormHint) hireFormHint.textContent = "Network error. Please try again.";
         }
     });
